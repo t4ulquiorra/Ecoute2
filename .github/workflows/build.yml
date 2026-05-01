@@ -1,0 +1,57 @@
+name: Build Écoute APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set Up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.ANDROID_NIGHTLY_KEYSTORE }}" | base64 -d > ${{ github.workspace }}/ecoute-release.jks
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --console=plain --warning-mode summary
+
+      - name: Build Nightly APK
+        run: ./gradlew assembleNightly --console=plain --warning-mode summary
+        env:
+          ANDROID_NIGHTLY_KEYSTORE: ${{ github.workspace }}/ecoute-release.jks
+          ANDROID_NIGHTLY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_NIGHTLY_KEYSTORE_PASSWORD }}
+          ANDROID_NIGHTLY_KEYSTORE_ALIAS: ${{ secrets.ANDROID_NIGHTLY_KEYSTORE_ALIAS }}
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ecoute-debug
+          path: app/build/outputs/apk/debug/*.apk
+
+      - name: Upload Nightly APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ecoute-nightly
+          path: app/build/outputs/apk/nightly/*.apk
