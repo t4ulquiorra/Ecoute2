@@ -1387,6 +1387,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                     YouTubeDLResponse.fromString(it)
                 }.also { it.exceptionOrNull()?.printStackTrace() }.getOrNull()
                 // ID check skipped — yt-dlp may return redirected ID
+                if (info == null) throw UnplayableException()
 
                 val uri = runCatching { info.url?.toUri() }.getOrNull() ?: throw UnplayableException()
                 val contentLength = info.fileSize
