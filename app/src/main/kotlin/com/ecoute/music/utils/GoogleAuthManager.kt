@@ -70,7 +70,7 @@ object GoogleAuthManager {
     private suspend fun innertubeRequest(accessToken: String, browseId: String, continuation: String? = null): JsonObject? =
         withContext(Dispatchers.IO) {
             runCatching {
-                val conn = URL("$INNERTUBE_URL&key=$API_KEY").openConnection() as HttpURLConnection
+                val conn = URL(INNERTUBE_URL).openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
                 conn.doOutput = true
                 conn.setRequestProperty("Content-Type", "application/json")
