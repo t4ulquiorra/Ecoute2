@@ -381,4 +381,12 @@
         <item quantity="one">%1$d song</item>
         <item quantity="other">%1$d songs</item>
     </plurals>
+    <string name="google_account">Google Account</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sync_liked_songs">Sync liked songs</string>
+    <string name="syncing">Syncing…</string>
+    <string name="synced_songs">Synced %d songs</string>
+    <string name="google_account_description">Import your YouTube liked songs into Favorites</string>
+    <string name="sync_error">Sync failed, try again</string>
 </resources>

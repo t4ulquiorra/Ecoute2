@@ -1,5 +1,8 @@
 package com.ecoute.music.ui.screens.settings
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,7 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.credentials.CredentialManager
 import com.ecoute.music.Database
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
 import com.ecoute.music.LocalCredentialManager
+import com.ecoute.music.utils.GoogleAuthManager
 import com.ecoute.music.R
 import com.ecoute.music.models.PipedSession
 import com.ecoute.music.transaction
@@ -61,6 +67,40 @@ fun SyncSettings(
     credentialManager: CredentialManager = LocalCredentialManager.current
 ) {
     val coroutineScope = rememberCoroutineScope()
+
+    var googleEmail by rememberSaveable { mutableStateOf<String?>(null) }
+    var isSyncing by rememberSaveable { mutableStateOf(false) }
+    var syncResult by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        googleEmail = GoogleAuthManager.getSignedInAccount(context)?.email
+    }
+
+    val signInLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            runCatching { task.getResult(ApiException::class.java) }.onSuccess { account ->
+                googleEmail = account.email
+                coroutineScope.launch {
+                    isSyncing = true
+                    syncResult = null
+                    val token = GoogleAuthManager.getAccessToken(context, account)
+                    if (token == null) { isSyncing = false; syncResult = context.getString(R.string.sync_error); return@launch }
+                    val songs = GoogleAuthManager.fetchAllLikedSongs(token)
+                    com.ecoute.music.transaction {
+                        songs.forEach { song ->
+                            Database.insert(song)
+                            Database.like(song.id, song.likedAt)
+                        }
+                    }
+                    isSyncing = false
+                    syncResult = context.getString(R.string.synced_songs, songs.size)
+                }
+            }
+        }
+    }
 
     val (colorPalette, typography) = LocalAppearance.current
     val uriHandler = LocalUriHandler.current
@@ -265,6 +305,45 @@ fun SyncSettings(
 
     SettingsCategoryScreen(title = stringResource(R.string.sync)) {
         SettingsDescription(text = stringResource(R.string.sync_description))
+
+        SettingsGroup(title = stringResource(R.string.google_account)) {
+            SettingsDescription(text = stringResource(R.string.google_account_description))
+            if (googleEmail == null) {
+                SettingsEntry(
+                    title = stringResource(R.string.sign_in_with_google),
+                    text = null,
+                    onClick = { signInLauncher.launch(GoogleAuthManager.getSignInIntent(context)) }
+                )
+            } else {
+                SettingsEntry(
+                    title = googleEmail ?: "",
+                    text = if (isSyncing) stringResource(R.string.syncing) else syncResult,
+                    onClick = {
+                        if (!isSyncing) coroutineScope.launch {
+                            isSyncing = true
+                            syncResult = null
+                            val account = GoogleAuthManager.getSignedInAccount(context) ?: return@launch
+                            val token = GoogleAuthManager.getAccessToken(context, account)
+                            if (token == null) { isSyncing = false; syncResult = context.getString(R.string.sync_error); return@launch }
+                            val songs = GoogleAuthManager.fetchAllLikedSongs(token)
+                            com.ecoute.music.transaction {
+                                songs.forEach { song ->
+                                    Database.insert(song)
+                                    Database.like(song.id, song.likedAt)
+                                }
+                            }
+                            isSyncing = false
+                            syncResult = context.getString(R.string.synced_songs, songs.size)
+                        }
+                    }
+                )
+                SettingsEntry(
+                    title = stringResource(R.string.sign_out),
+                    text = null,
+                    onClick = { GoogleAuthManager.signOut(context); googleEmail = null; syncResult = null }
+                )
+            }
+        }
 
         SettingsGroup(title = stringResource(R.string.piped)) {
             SettingsEntry(

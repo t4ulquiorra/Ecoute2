@@ -27,6 +27,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 
 [libraries]
+play_services_auth = { module = "com.google.android.gms:play-services-auth", version = "21.3.0" }
 newpipe_extractor = { module = "com.github.TeamNewPipe:NewPipeExtractor", version = "v0.24.2" }
 
 core_ktx = { module = "androidx.core:core-ktx", version = "1.18.0" }
