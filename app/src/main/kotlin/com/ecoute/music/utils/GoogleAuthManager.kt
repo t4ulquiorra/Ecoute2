@@ -77,9 +77,17 @@ object GoogleAuthManager {
                 conn.setRequestProperty("X-Goog-AuthUser", "0")
                 conn.setRequestProperty("Origin", "https://music.youtube.com")
                 conn.outputStream.write(innertubeBody(browseId, continuation).toByteArray())
-                val body = conn.inputStream.bufferedReader().readText()
+                val responseCode = conn.responseCode
+                val body = if (responseCode in 200..299) {
+                    conn.inputStream.bufferedReader().readText()
+                } else {
+                    val err = conn.errorStream?.bufferedReader()?.readText() ?: "no error body"
+                    android.util.Log.e("GoogleAuth", "HTTP $responseCode: ${err.take(300)}")
+                    conn.disconnect()
+                    return@runCatching null
+                }
                 conn.disconnect()
-                android.util.Log.d("GoogleAuth", "Response(${body.length}): ${body.take(500)}")
+                android.util.Log.d("GoogleAuth", "Response(${body.length}): ${body.take(300)}")
                 json.parseToJsonElement(body).jsonObject
             }.onFailure {
                 android.util.Log.e("GoogleAuth", "innertubeRequest failed: ${it::class.simpleName}: ${it.message}")
