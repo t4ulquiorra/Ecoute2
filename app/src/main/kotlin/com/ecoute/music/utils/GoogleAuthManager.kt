@@ -59,10 +59,11 @@ object GoogleAuthManager {
         }
 
     private fun innertubeBody(browseId: String, continuation: String? = null): String {
+        val ctx = """{"client":{"clientName":"WEB_REMIX","clientVersion":"1.20241121.01.00","hl":"en","gl":"US"}}"""
         return if (continuation != null) {
-            """{"context":{"client":{"clientName":"WEB_REMIX","clientVersion":"1.20241121.01.00","hl":"en"}},"continuation":"$continuation"}"""
+            """{"context":$ctx,"continuation":"$continuation"}"""
         } else {
-            """{"context":{"client":{"clientName":"WEB_REMIX","clientVersion":"1.20241121.01.00","hl":"en"}},"browseId":"$browseId"}"""
+            """{"context":$ctx,"browseId":"$browseId"}"""
         }
     }
 
@@ -76,7 +77,9 @@ object GoogleAuthManager {
                 conn.setRequestProperty("Authorization", "Bearer $accessToken")
                 conn.setRequestProperty("X-Goog-AuthUser", "0")
                 conn.setRequestProperty("Origin", "https://music.youtube.com")
-                conn.outputStream.write(innertubeBody(browseId, continuation).toByteArray())
+                val reqBody = innertubeBody(browseId, continuation)
+                android.util.Log.d("GoogleAuth", "Request: $reqBody")
+                conn.outputStream.write(reqBody.toByteArray())
                 val responseCode = conn.responseCode
                 val body = if (responseCode in 200..299) {
                     conn.inputStream.bufferedReader().readText()
