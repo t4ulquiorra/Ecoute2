@@ -67,6 +67,7 @@ fun SyncSettings(
     credentialManager: CredentialManager = LocalCredentialManager.current
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val ctx = LocalContext.current
 
     var googleEmail by rememberSaveable { mutableStateOf<String?>(null) }
     var isSyncing by rememberSaveable { mutableStateOf(false) }
@@ -106,7 +107,6 @@ fun SyncSettings(
 
     val (colorPalette, typography) = LocalAppearance.current
     val uriHandler = LocalUriHandler.current
-    val ctx = LocalContext.current
 
     val pipedSessions by Database.pipedSessions().collectAsState(initial = listOf())
 
@@ -275,7 +275,7 @@ fun SyncSettings(
 
                                     runCatching {
                                         credentialManager.upsert(
-                                            ctx = ctx,
+                                            context = ctx,
                                             username = username,
                                             password = password
                                         )
