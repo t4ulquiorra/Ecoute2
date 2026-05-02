@@ -24,7 +24,7 @@ import java.net.URL
 
 object GoogleAuthManager {
     const val CLIENT_ID = "858007978993-6ssuq2lq88j632hqmvdt47p3no497o08.apps.googleusercontent.com"
-    private const val YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube.readonly"
+    private const val YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube"
     private const val INNERTUBE_URL = "https://music.youtube.com/youtubei/v1/browse?prettyPrint=false"
     private const val API_KEY = "AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"
     private val json = Json { ignoreUnknownKeys = true }
