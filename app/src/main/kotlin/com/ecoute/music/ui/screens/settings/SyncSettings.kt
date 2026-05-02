@@ -88,9 +88,10 @@ fun SyncSettings(
                     isSyncing = true
                     syncResult = null
                     val token = GoogleAuthManager.getAccessToken(ctx, account)
+                    android.util.Log.e("GoogleAuth", "token=$token")
                     if (token == null) {
                         isSyncing = false
-                        syncResult = "Token exchange failed"
+                        syncResult = "Token null - check logs"
                         return@launch
                     }
                     val songs = GoogleAuthManager.fetchLikedSongs(token)

@@ -61,6 +61,8 @@ object GoogleAuthManager {
                     account.account!!,
                     "oauth2:$YOUTUBE_SCOPE"
                 )
+            }.onFailure { 
+                android.util.Log.e("GoogleAuth", "getToken failed: ${it::class.simpleName}: ${it.message}")
             }.getOrNull()
         }
 
