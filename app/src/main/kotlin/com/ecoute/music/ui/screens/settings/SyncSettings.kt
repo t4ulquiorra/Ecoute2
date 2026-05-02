@@ -87,13 +87,7 @@ fun SyncSettings(
                 coroutineScope.launch {
                     isSyncing = true
                     syncResult = null
-                    val authCode = account.serverAuthCode
-                    if (authCode == null) {
-                        isSyncing = false
-                        syncResult = "Auth failed - try signing out and back in"
-                        return@launch
-                    }
-                    val token = GoogleAuthManager.exchangeAuthCode(authCode)
+                    val token = GoogleAuthManager.getAccessToken(ctx, account)
                     if (token == null) {
                         isSyncing = false
                         syncResult = "Token exchange failed"
@@ -332,14 +326,10 @@ fun SyncSettings(
                         if (!isSyncing) coroutineScope.launch {
                             isSyncing = true
                             syncResult = null
-                            val account = GoogleAuthManager.getSignedInAccount(ctx)
-                            val authCode = account?.serverAuthCode
-                            if (authCode == null) {
-                                isSyncing = false
-                                syncResult = "Sign out and sign in again to re-authorize"
-                                return@launch
+                            val account = GoogleAuthManager.getSignedInAccount(ctx) ?: run {
+                                isSyncing = false; syncResult = "Not signed in"; return@launch
                             }
-                            val token = GoogleAuthManager.exchangeAuthCode(authCode)
+                            val token = GoogleAuthManager.getAccessToken(ctx, account)
                             if (token == null) {
                                 isSyncing = false
                                 syncResult = "Token exchange failed"

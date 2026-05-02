@@ -3,6 +3,7 @@ package com.ecoute.music.utils
 import android.content.Context
 import android.content.Intent
 import com.ecoute.music.models.Song
+import com.google.android.gms.auth.GoogleAuthUtil
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -12,7 +13,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.net.HttpURLConnection
 import java.net.URL
 
 object GoogleAuthManager {
@@ -23,7 +23,6 @@ object GoogleAuthManager {
     fun signInOptions() = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
         .requestEmail()
         .requestScopes(Scope(YOUTUBE_SCOPE))
-        .requestServerAuthCode(CLIENT_ID, true)
         .build()
 
     fun getSignInIntent(context: Context): Intent =
@@ -36,12 +35,6 @@ object GoogleAuthManager {
 
     fun signOut(context: Context) =
         GoogleSignIn.getClient(context, signInOptions()).signOut()
-
-    @Serializable
-    data class TokenResponse(
-        @SerialName("access_token") val accessToken: String? = null,
-        val error: String? = null
-    )
 
     @Serializable
     data class PlaylistItemsResponse(
@@ -59,24 +52,14 @@ object GoogleAuthManager {
     @Serializable data class Thumbnails(val high: Thumb? = null, val medium: Thumb? = null)
     @Serializable data class Thumb(val url: String? = null)
 
-    suspend fun exchangeAuthCode(serverAuthCode: String): String? =
+    suspend fun getAccessToken(context: Context, account: GoogleSignInAccount): String? =
         withContext(Dispatchers.IO) {
             runCatching {
-                val body = buildString {
-                    append("code=").append(serverAuthCode)
-                    append("&client_id=").append(CLIENT_ID)
-                    append("&grant_type=authorization_code")
-                    append("&redirect_uri=")
-                }
-                val conn = URL("https://oauth2.googleapis.com/token")
-                    .openConnection() as HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.doOutput = true
-                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-                conn.outputStream.write(body.toByteArray())
-                val response = conn.inputStream.bufferedReader().readText()
-                conn.disconnect()
-                json.decodeFromString<TokenResponse>(response).accessToken
+                GoogleAuthUtil.getToken(
+                    context,
+                    account.account!!,
+                    "oauth2:$YOUTUBE_SCOPE"
+                )
             }.getOrNull()
         }
 
