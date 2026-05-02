@@ -189,7 +189,7 @@ dependencies {
 
     implementation(libs.credentials)
     implementation(libs.credentials.play)
-    implementation(libs.play_services_auth)
+    implementation(libs.play.services.auth)
 
     implementation(libs.kotlin.coroutines)
     implementation(libs.kotlin.immutable)
