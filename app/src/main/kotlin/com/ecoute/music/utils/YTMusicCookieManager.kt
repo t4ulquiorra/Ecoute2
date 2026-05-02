@@ -54,10 +54,8 @@ object YTMusicCookieManager {
             ?.substringAfter("=")
 
     @Serializable data class LikedSongsResponse(
-        val header: Header? = null,
         val contents: Contents? = null
     )
-    @Serializable data class Header(val musicImmersiveHeaderRenderer: Any? = null)
     @Serializable data class Contents(
         val singleColumnBrowseResultsRenderer: SingleColumn? = null
     )
