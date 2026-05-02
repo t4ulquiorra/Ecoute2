@@ -88,21 +88,37 @@ fun SyncSettings(
                     isSyncing = true
                     syncResult = null
                     val token = GoogleAuthManager.getAccessToken(ctx, account)
-                    android.util.Log.e("GoogleAuth", "token=$token")
                     if (token == null) {
                         isSyncing = false
-                        syncResult = "Token null - check logs"
+                        syncResult = "Auth failed"
                         return@launch
                     }
                     val songs = GoogleAuthManager.fetchLikedSongs(token)
+                    val playlists = GoogleAuthManager.fetchPlaylists(token)
+                    val artists = GoogleAuthManager.fetchArtists(token)
                     com.ecoute.music.transaction {
                         songs.forEach { song ->
                             Database.insert(song)
                             Database.like(song.id, song.likedAt)
                         }
+                        playlists.forEach { pl ->
+                            Database.insert(com.ecoute.music.models.Playlist(
+                                name = pl.title,
+                                browseId = pl.id,
+                                thumbnail = pl.thumbnailUrl
+                            ))
+                        }
+                        artists.forEach { ar ->
+                            Database.upsert(com.ecoute.music.models.Artist(
+                                id = ar.id,
+                                name = ar.name,
+                                thumbnailUrl = ar.thumbnailUrl,
+                                bookmarkedAt = System.currentTimeMillis()
+                            ))
+                        }
                     }
                     isSyncing = false
-                    syncResult = "${songs.size} songs synced"
+                    syncResult = "${songs.size} songs, ${playlists.size} playlists, ${artists.size} artists synced"
                 }
             }
         }
@@ -333,18 +349,35 @@ fun SyncSettings(
                             val token = GoogleAuthManager.getAccessToken(ctx, account)
                             if (token == null) {
                                 isSyncing = false
-                                syncResult = "Token exchange failed"
+                                syncResult = "Auth failed"
                                 return@launch
                             }
                             val songs = GoogleAuthManager.fetchLikedSongs(token)
+                            val playlists = GoogleAuthManager.fetchPlaylists(token)
+                            val artists = GoogleAuthManager.fetchArtists(token)
                             com.ecoute.music.transaction {
                                 songs.forEach { song ->
                                     Database.insert(song)
                                     Database.like(song.id, song.likedAt)
                                 }
+                                playlists.forEach { pl ->
+                                    Database.insert(com.ecoute.music.models.Playlist(
+                                        name = pl.title,
+                                        browseId = pl.id,
+                                        thumbnail = pl.thumbnailUrl
+                                    ))
+                                }
+                                artists.forEach { ar ->
+                                    Database.upsert(com.ecoute.music.models.Artist(
+                                        id = ar.id,
+                                        name = ar.name,
+                                        thumbnailUrl = ar.thumbnailUrl,
+                                        bookmarkedAt = System.currentTimeMillis()
+                                    ))
+                                }
                             }
                             isSyncing = false
-                            syncResult = "${songs.size} songs synced"
+                            syncResult = "${songs.size} songs, ${playlists.size} playlists, ${artists.size} artists synced"
                         }
                     }
                 )
