@@ -323,9 +323,9 @@ fun SyncSettings(
                             com.ecoute.music.transaction {
                                 tracks.forEach { track ->
                                     val song = com.ecoute.music.models.Song(
-                                        id = track.videoId, title = track.title,
+                                        id = track.id, title = track.title,
                                         artistsText = track.artist, durationText = null,
-                                        thumbnailUrl = track.thumbnailUrl,
+                                        thumbnailUrl = track.thumbnail,
                                         likedAt = System.currentTimeMillis()
                                     )
                                     Database.insert(song)
