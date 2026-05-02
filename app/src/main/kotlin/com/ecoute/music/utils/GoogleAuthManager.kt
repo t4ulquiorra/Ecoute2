@@ -82,7 +82,8 @@ object GoogleAuthManager {
                 android.util.Log.d("GoogleAuth", "Response(${body.length}): ${body.take(500)}")
                 json.parseToJsonElement(body).jsonObject
             }.onFailure {
-                android.util.Log.e("GoogleAuth", "innertubeRequest failed: ${it.message}")
+                android.util.Log.e("GoogleAuth", "innertubeRequest failed: ${it::class.simpleName}: ${it.message}")
+                it.printStackTrace()
             }.getOrNull()
         }
 
