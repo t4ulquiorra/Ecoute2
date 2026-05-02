@@ -13,14 +13,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import java.net.URL
 
 object GoogleAuthManager {
     const val CLIENT_ID = "858007978993-6ssuq2lq88j632hqmvdt47p3no497o08.apps.googleusercontent.com"
     private const val YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube.readonly"
 
-    private val httpClient = OkHttpClient()
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun signInOptions() = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -72,9 +70,10 @@ object GoogleAuthManager {
                 if (pageToken != null) append("&pageToken=$pageToken")
             }
             val response = runCatching {
-                val req = Request.Builder().url(url)
-                    .header("Authorization", "Bearer $accessToken").build()
-                val body = httpClient.newCall(req).execute().body?.string() ?: return@runCatching null
+                val conn = URL(url).openConnection() as java.net.HttpURLConnection
+                conn.setRequestProperty("Authorization", "Bearer $accessToken")
+                val body = conn.inputStream.bufferedReader().readText()
+                conn.disconnect()
                 json.decodeFromString<PlaylistItemsResponse>(body)
             }.getOrNull() ?: break
             response.items?.forEach { item ->

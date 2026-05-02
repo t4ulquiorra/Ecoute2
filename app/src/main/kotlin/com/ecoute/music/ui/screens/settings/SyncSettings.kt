@@ -75,7 +75,7 @@ fun SyncSettings(
     val syncedMsg = stringResource(R.string.synced_songs, 0)
 
     LaunchedEffect(Unit) {
-        googleEmail = GoogleAuthManager.getSignedInAccount(context)?.email
+        googleEmail = GoogleAuthManager.getSignedInAccount(ctx)?.email
     }
 
     val signInLauncher = rememberLauncherForActivityResult(
@@ -88,7 +88,7 @@ fun SyncSettings(
                 coroutineScope.launch {
                     isSyncing = true
                     syncResult = null
-                    val token = GoogleAuthManager.getAccessToken(context, account)
+                    val token = GoogleAuthManager.getAccessToken(ctx, account)
                     if (token == null) { isSyncing = false; syncResult = syncErrorMsg; return@launch }
                     val songs = GoogleAuthManager.fetchAllLikedSongs(token)
                     com.ecoute.music.transaction {
@@ -106,7 +106,7 @@ fun SyncSettings(
 
     val (colorPalette, typography) = LocalAppearance.current
     val uriHandler = LocalUriHandler.current
-    val context = LocalContext.current
+    val ctx = LocalContext.current
 
     val pipedSessions by Database.pipedSessions().collectAsState(initial = listOf())
 
@@ -159,7 +159,7 @@ fun SyncSettings(
 
                         backgroundLoading = true
                         runCatching {
-                            credentialManager.get(context)?.let {
+                            credentialManager.get(ctx)?.let {
                                 username = it.id
                                 password = it.password
                             }
@@ -275,7 +275,7 @@ fun SyncSettings(
 
                                     runCatching {
                                         credentialManager.upsert(
-                                            context = context,
+                                            ctx = ctx,
                                             username = username,
                                             password = password
                                         )
@@ -314,7 +314,7 @@ fun SyncSettings(
                 SettingsEntry(
                     title = stringResource(R.string.sign_in_with_google),
                     text = null,
-                    onClick = { signInLauncher.launch(GoogleAuthManager.getSignInIntent(context)) }
+                    onClick = { signInLauncher.launch(GoogleAuthManager.getSignInIntent(ctx)) }
                 )
             } else {
                 SettingsEntry(
@@ -324,8 +324,8 @@ fun SyncSettings(
                         if (!isSyncing) coroutineScope.launch {
                             isSyncing = true
                             syncResult = null
-                            val account = GoogleAuthManager.getSignedInAccount(context) ?: return@launch
-                            val token = GoogleAuthManager.getAccessToken(context, account)
+                            val account = GoogleAuthManager.getSignedInAccount(ctx) ?: return@launch
+                            val token = GoogleAuthManager.getAccessToken(ctx, account)
                             if (token == null) { isSyncing = false; syncResult = syncErrorMsg; return@launch }
                             val songs = GoogleAuthManager.fetchAllLikedSongs(token)
                             com.ecoute.music.transaction {
@@ -342,7 +342,7 @@ fun SyncSettings(
                 SettingsEntry(
                     title = stringResource(R.string.sign_out),
                     text = null,
-                    onClick = { GoogleAuthManager.signOut(context); googleEmail = null; syncResult = null }
+                    onClick = { GoogleAuthManager.signOut(ctx); googleEmail = null; syncResult = null }
                 )
             }
         }
