@@ -109,6 +109,34 @@ object YTMusicCookieManager {
 
     suspend fun fetchLikedSongs(context: Context): List<TrackInfo> {
         val cookie = getCookie(context) ?: return emptyList()
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val module = com.ecoute.music.Dependencies.py.getModule("liked_songs")
+                val result = module.callAttr("get_liked_songs", cookie).toString()
+                json.decodeFromString<List<TrackInfoJson>>(result).map {
+                    TrackInfo(it.id, it.title, it.artist, it.thumbnail)
+                }
+            }.onFailure { it.printStackTrace() }.getOrElse { emptyList() }
+        }
+    }
+
+    @Serializable data class TrackInfoJson(
+        val id: String,
+        val title: String,
+        val artist: String? = null,
+        val thumbnail: String? = null
+    )
+
+
+    data class TrackInfo(
+        val videoId: String,
+        val title: String,
+        val artist: String?,
+        val thumbnailUrl: String?
+    )
+
+    suspend fun fetchLikedSongs(context: Context): List<TrackInfo> {
+        val cookie = getCookie(context) ?: return emptyList()
         val sapiSid = extractSapiSid(cookie) ?: return emptyList()
         val auth = buildSapiSidHash(sapiSid)
         val tracks = mutableListOf<TrackInfo>()
