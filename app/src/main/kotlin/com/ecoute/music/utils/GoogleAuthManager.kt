@@ -79,6 +79,7 @@ object GoogleAuthManager {
                 conn.outputStream.write(innertubeBody(browseId, continuation).toByteArray())
                 val body = conn.inputStream.bufferedReader().readText()
                 conn.disconnect()
+                android.util.Log.d("GoogleAuth", "Response(${body.length}): ${body.take(500)}")
                 json.parseToJsonElement(body).jsonObject
             }.onFailure {
                 android.util.Log.e("GoogleAuth", "innertubeRequest failed: ${it.message}")
