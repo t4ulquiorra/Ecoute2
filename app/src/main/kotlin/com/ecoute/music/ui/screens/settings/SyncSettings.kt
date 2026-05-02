@@ -82,7 +82,7 @@ fun SyncSettings(
                 isSyncing = true
                 val tracks = YTMusicCookieManager.fetchLikedSongs(ctx)
                 com.ecoute.music.transaction {
-                    tracks.forEach { track ->
+                    tracks.forEach { track: YTMusicCookieManager.TrackInfo ->
                         val song = com.ecoute.music.models.Song(
                             id = track.id, title = track.title,
                             artistsText = track.artist, durationText = null,
@@ -321,7 +321,7 @@ fun SyncSettings(
                             syncResult = null
                             val tracks = YTMusicCookieManager.fetchLikedSongs(ctx)
                             com.ecoute.music.transaction {
-                                tracks.forEach { track ->
+                                tracks.forEach { track: YTMusicCookieManager.TrackInfo ->
                                     val song = com.ecoute.music.models.Song(
                                         id = track.id, title = track.title,
                                         artistsText = track.artist, durationText = null,
