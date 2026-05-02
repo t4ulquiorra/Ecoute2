@@ -32,7 +32,12 @@ import androidx.compose.ui.util.fastForEachIndexed
 import androidx.credentials.CredentialManager
 import com.ecoute.music.Database
 import com.ecoute.music.LocalCredentialManager
-import com.ecoute.music.utils.YTMusicCookieManager
+import com.ecoute.music.utils.GoogleAuthManager
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
 import com.ecoute.music.R
 import com.ecoute.music.models.PipedSession
 import com.ecoute.music.transaction
@@ -64,40 +69,48 @@ fun SyncSettings(
     val coroutineScope = rememberCoroutineScope()
     val ctx = LocalContext.current
 
-    var showYTLogin by rememberSaveable { mutableStateOf(false) }
+    var googleEmail by rememberSaveable { mutableStateOf<String?>(null) }
     var isSyncing by rememberSaveable { mutableStateOf(false) }
     var syncResult by rememberSaveable { mutableStateOf<String?>(null) }
-    var ytEmail by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        ytEmail = if (YTMusicCookieManager.isLoggedIn(ctx))
-            YTMusicCookieManager.getEmail(ctx) ?: "YouTube Account" else null
+        googleEmail = GoogleAuthManager.getSignedInAccount(ctx)?.email
     }
 
-    if (showYTLogin) {
-        YTLoginScreen(onLoginSuccess = {
-            ytEmail = YTMusicCookieManager.getEmail(ctx) ?: "YouTube Account"
-            showYTLogin = false
-            coroutineScope.launch {
-                isSyncing = true
-                val tracks = YTMusicCookieManager.fetchLikedSongs(ctx)
-                com.ecoute.music.transaction {
-                    tracks.forEach { track: YTMusicCookieManager.TrackInfo ->
-                        val song = com.ecoute.music.models.Song(
-                            id = track.id, title = track.title,
-                            artistsText = track.artist, durationText = null,
-                            thumbnailUrl = track.thumbnail,
-                            likedAt = System.currentTimeMillis()
-                        )
-                        Database.insert(song)
-                        Database.like(song.id, song.likedAt)
+    val signInLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            runCatching { task.getResult(ApiException::class.java) }.onSuccess { account ->
+                googleEmail = account.email
+                coroutineScope.launch {
+                    isSyncing = true
+                    syncResult = null
+                    val authCode = account.serverAuthCode
+                    if (authCode == null) {
+                        isSyncing = false
+                        syncResult = "Auth failed - try signing out and back in"
+                        return@launch
                     }
+                    val token = GoogleAuthManager.exchangeAuthCode(authCode)
+                    if (token == null) {
+                        isSyncing = false
+                        syncResult = "Token exchange failed"
+                        return@launch
+                    }
+                    val songs = GoogleAuthManager.fetchLikedSongs(token)
+                    com.ecoute.music.transaction {
+                        songs.forEach { song ->
+                            Database.insert(song)
+                            Database.like(song.id, song.likedAt)
+                        }
+                    }
+                    isSyncing = false
+                    syncResult = "${songs.size} songs synced"
                 }
-                isSyncing = false
-                syncResult = "${tracks.size} songs synced"
             }
-        })
-        return
+        }
     }
 
     val (colorPalette, typography) = LocalAppearance.current
@@ -305,42 +318,49 @@ fun SyncSettings(
 
         SettingsGroup(title = stringResource(R.string.google_account)) {
             SettingsDescription(text = stringResource(R.string.google_account_description))
-            if (ytEmail == null) {
+            if (googleEmail == null) {
                 SettingsEntry(
                     title = stringResource(R.string.sign_in_with_google),
                     text = null,
-                    onClick = { showYTLogin = true }
+                    onClick = { signInLauncher.launch(GoogleAuthManager.getSignInIntent(ctx)) }
                 )
             } else {
                 SettingsEntry(
-                    title = ytEmail ?: "YouTube Account",
+                    title = googleEmail ?: "",
                     text = if (isSyncing) stringResource(R.string.syncing) else syncResult,
                     onClick = {
                         if (!isSyncing) coroutineScope.launch {
                             isSyncing = true
                             syncResult = null
-                            val tracks = YTMusicCookieManager.fetchLikedSongs(ctx)
+                            val account = GoogleAuthManager.getSignedInAccount(ctx)
+                            val authCode = account?.serverAuthCode
+                            if (authCode == null) {
+                                isSyncing = false
+                                syncResult = "Sign out and sign in again to re-authorize"
+                                return@launch
+                            }
+                            val token = GoogleAuthManager.exchangeAuthCode(authCode)
+                            if (token == null) {
+                                isSyncing = false
+                                syncResult = "Token exchange failed"
+                                return@launch
+                            }
+                            val songs = GoogleAuthManager.fetchLikedSongs(token)
                             com.ecoute.music.transaction {
-                                tracks.forEach { track: YTMusicCookieManager.TrackInfo ->
-                                    val song = com.ecoute.music.models.Song(
-                                        id = track.id, title = track.title,
-                                        artistsText = track.artist, durationText = null,
-                                        thumbnailUrl = track.thumbnail,
-                                        likedAt = System.currentTimeMillis()
-                                    )
+                                songs.forEach { song ->
                                     Database.insert(song)
                                     Database.like(song.id, song.likedAt)
                                 }
                             }
                             isSyncing = false
-                            syncResult = "${tracks.size} songs synced"
+                            syncResult = "${songs.size} songs synced"
                         }
                     }
                 )
                 SettingsEntry(
                     title = stringResource(R.string.sign_out),
                     text = null,
-                    onClick = { YTMusicCookieManager.logout(ctx); ytEmail = null; syncResult = null }
+                    onClick = { GoogleAuthManager.signOut(ctx); googleEmail = null; syncResult = null }
                 )
             }
         }
