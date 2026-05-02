@@ -71,6 +71,8 @@ fun SyncSettings(
     var googleEmail by rememberSaveable { mutableStateOf<String?>(null) }
     var isSyncing by rememberSaveable { mutableStateOf(false) }
     var syncResult by rememberSaveable { mutableStateOf<String?>(null) }
+    val syncErrorMsg = stringResource(R.string.sync_error)
+    val syncedMsg = stringResource(R.string.synced_songs, 0)
 
     LaunchedEffect(Unit) {
         googleEmail = GoogleAuthManager.getSignedInAccount(context)?.email
@@ -87,7 +89,7 @@ fun SyncSettings(
                     isSyncing = true
                     syncResult = null
                     val token = GoogleAuthManager.getAccessToken(context, account)
-                    if (token == null) { isSyncing = false; syncResult = context.getString(R.string.sync_error); return@launch }
+                    if (token == null) { isSyncing = false; syncResult = syncErrorMsg; return@launch }
                     val songs = GoogleAuthManager.fetchAllLikedSongs(token)
                     com.ecoute.music.transaction {
                         songs.forEach { song ->
@@ -96,7 +98,7 @@ fun SyncSettings(
                         }
                     }
                     isSyncing = false
-                    syncResult = context.getString(R.string.synced_songs, songs.size)
+                    syncResult = "${songs.size} songs synced"
                 }
             }
         }
@@ -324,7 +326,7 @@ fun SyncSettings(
                             syncResult = null
                             val account = GoogleAuthManager.getSignedInAccount(context) ?: return@launch
                             val token = GoogleAuthManager.getAccessToken(context, account)
-                            if (token == null) { isSyncing = false; syncResult = context.getString(R.string.sync_error); return@launch }
+                            if (token == null) { isSyncing = false; syncResult = syncErrorMsg; return@launch }
                             val songs = GoogleAuthManager.fetchAllLikedSongs(token)
                             com.ecoute.music.transaction {
                                 songs.forEach { song ->
@@ -333,7 +335,7 @@ fun SyncSettings(
                                 }
                             }
                             isSyncing = false
-                            syncResult = context.getString(R.string.synced_songs, songs.size)
+                            syncResult = "${songs.size} songs synced"
                         }
                     }
                 )

@@ -8,28 +8,20 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.Scope
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 object GoogleAuthManager {
     const val CLIENT_ID = "858007978993-6ssuq2lq88j632hqmvdt47p3no497o08.apps.googleusercontent.com"
     private const val YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube.readonly"
 
-    private val httpClient = HttpClient(OkHttp) {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-    }
+    private val httpClient = OkHttpClient()
+    private val json = Json { ignoreUnknownKeys = true }
 
     private fun signInOptions() = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
         .requestEmail()
@@ -80,8 +72,10 @@ object GoogleAuthManager {
                 if (pageToken != null) append("&pageToken=$pageToken")
             }
             val response = runCatching {
-                httpClient.get(url) { header("Authorization", "Bearer $accessToken") }
-                    .body<PlaylistItemsResponse>()
+                val req = Request.Builder().url(url)
+                    .header("Authorization", "Bearer $accessToken").build()
+                val body = httpClient.newCall(req).execute().body?.string() ?: return@runCatching null
+                json.decodeFromString<PlaylistItemsResponse>(body)
             }.getOrNull() ?: break
             response.items?.forEach { item ->
                 val videoId = item.snippet?.resourceId?.videoId ?: return@forEach
