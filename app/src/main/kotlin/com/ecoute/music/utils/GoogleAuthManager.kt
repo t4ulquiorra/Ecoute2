@@ -149,94 +149,48 @@ object GoogleAuthManager {
 
     suspend fun fetchLikedSongs(accessToken: String): List<Song> {
         val songs = mutableListOf<Song>()
+        var pageToken: String? = null
         val now = System.currentTimeMillis()
-        var continuation: String? = null
-        var isFirst = true
-
         withContext(Dispatchers.IO) {
             do {
-                val response = if (isFirst) {
-                    isFirst = false
-                    innertubeRequest(accessToken, "FEmusic_liked_videos")
-                } else {
-                    innertubeRequest(accessToken, "", continuation)
-                } ?: break
-
-                continuation = null
-
-                // Extract items from musicShelfRenderer contents
-                val contents = runCatching {
-                    response["contents"]?.jsonObject
-                        ?.get("singleColumnBrowseResultsRenderer")?.jsonObject
-                        ?.get("tabs")?.jsonArray
-                        ?.firstOrNull()?.jsonObject
-                        ?.get("tabRenderer")?.jsonObject
-                        ?.get("content")?.jsonObject
-                        ?.get("sectionListRenderer")?.jsonObject
-                        ?.get("contents")?.jsonArray
-                        ?.firstOrNull()?.jsonObject
-                        ?.get("musicShelfRenderer")?.jsonObject
-                        ?.get("contents")?.jsonArray
-                }.getOrNull() ?: runCatching {
-                    // continuation response format
-                    response["continuationContents"]?.jsonObject
-                        ?.get("musicShelfContinuation")?.jsonObject
-                        ?.get("contents")?.jsonArray
+                val url = buildString {
+                    append("https://www.googleapis.com/youtube/v3/playlistItems")
+                    append("?playlistId=LM&part=snippet&maxResults=50")
+                    if (pageToken != null) append("&pageToken=$pageToken")
+                }
+                val response = runCatching {
+                    val conn = URL(url).openConnection() as HttpURLConnection
+                    conn.setRequestProperty("Authorization", "Bearer $accessToken")
+                    val responseCode = conn.responseCode
+                    if (responseCode !in 200..299) {
+                        val err = conn.errorStream?.bufferedReader()?.readText() ?: ""
+                        android.util.Log.e("GoogleAuth", "fetchLikedSongs HTTP $responseCode: ${err.take(200)}")
+                        conn.disconnect()
+                        return@runCatching null
+                    }
+                    val body = conn.inputStream.bufferedReader().readText()
+                    conn.disconnect()
+                    json.decodeFromString<PlaylistItemsResponse>(body)
                 }.getOrNull() ?: break
-
-                // Extract continuation token
-                continuation = runCatching {
-                    response["continuationContents"]?.jsonObject
-                        ?.get("musicShelfContinuation")?.jsonObject
-                        ?.get("continuations")?.jsonArray
-                        ?.firstOrNull()?.jsonObject
-                        ?.get("nextContinuationData")?.jsonObject
-                        ?.get("continuation")?.jsonPrimitive?.content
-                }.getOrNull()
-
-                contents.forEach { item ->
-                    val renderer = runCatching {
-                        item.jsonObject["musicResponsiveListItemRenderer"]?.jsonObject
-                    }.getOrNull() ?: return@forEach
-
-                    val flexColumns = renderer["flexColumns"]?.jsonArray ?: return@forEach
-                    val title = extractText(
-                        flexColumns.getOrNull(0)?.jsonObject
-                            ?.get("musicResponsiveListItemFlexColumnRenderer")?.jsonObject
-                            ?.get("text")
-                    ) ?: return@forEach
-
-                    val artist = extractText(
-                        flexColumns.getOrNull(1)?.jsonObject
-                            ?.get("musicResponsiveListItemFlexColumnRenderer")?.jsonObject
-                            ?.get("text")
-                    )
-
-                    val videoId = runCatching {
-                        renderer["overlay"]?.jsonObject
-                            ?.get("musicItemThumbnailOverlayRenderer")?.jsonObject
-                            ?.get("content")?.jsonObject
-                            ?.get("musicPlayButtonRenderer")?.jsonObject
-                            ?.get("playNavigationEndpoint")?.jsonObject
-                            ?.get("watchEndpoint")?.jsonObject
-                            ?.get("videoId")?.jsonPrimitive?.content
-                    }.getOrNull() ?: return@forEach
-
-                    val thumbnail = extractThumbnail(renderer)
-
+                response.items?.forEach { item ->
+                    val videoId = item.snippet?.resourceId?.videoId ?: return@forEach
+                    val title = item.snippet.title ?: return@forEach
+                    if (title == "Deleted video" || title == "Private video") return@forEach
                     songs.add(Song(
-                        id = videoId,
-                        title = title,
-                        artistsText = artist,
+                        id = videoId, title = title,
+                        artistsText = item.snippet.channelTitle,
                         durationText = null,
-                        thumbnailUrl = thumbnail,
+                        thumbnailUrl = item.snippet.thumbnails?.high?.url
+                            ?: item.snippet.thumbnails?.medium?.url,
                         likedAt = now
                     ))
                 }
-            } while (continuation != null)
+                pageToken = response.nextPageToken
+            } while (pageToken != null)
         }
         return songs
     }
+
 
     suspend fun fetchPlaylists(accessToken: String): List<YTMPlaylist> {
         val playlists = mutableListOf<YTMPlaylist>()
