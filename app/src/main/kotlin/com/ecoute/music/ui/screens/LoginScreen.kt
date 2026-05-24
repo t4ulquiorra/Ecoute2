@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ecoute.music.preferences.AccountPreferences
-import com.ecoute.music.ui.screens.Route
 import com.ecoute.providers.innertube.Innertube
 import com.ecoute.providers.innertube.requests.accountInfo
 import kotlinx.coroutines.delay
@@ -43,31 +42,31 @@ fun LoginScreen(
                     override fun onPageFinished(view: WebView, url: String?) {
                         loadUrl("javascript:Android.onRetrieveVisitorData(window.yt?.config_?.VISITOR_DATA)")
                         loadUrl("javascript:Android.onRetrieveDataSyncId(window.yt?.config_?.DATASYNC_ID)")
-                        if (url?.startsWith("https://music.youtube.com") == true && !hasCompletedLogin) {
+                        if (url?.contains("music.youtube.com") == true && !hasCompletedLogin) {
                             val cookie = CookieManager.getInstance().getCookie(url)
-                            if (!cookie.isNullOrEmpty()) {
+                            if (!cookie.isNullOrEmpty() && "SAPISID" in cookie) {
                                 hasCompletedLogin = true
                                 AccountPreferences.innerTubeCookie = cookie
+                                Innertube.cookie = cookie
                                 coroutineScope.launch {
                                     delay(500)
-                                    Innertube.cookie = cookie
-                                    Innertube.accountInfo().onSuccess { info ->
-                                        AccountPreferences.accountName = info.name
-                                        AccountPreferences.accountEmail = info.email.orEmpty()
-                                        AccountPreferences.accountChannelHandle = info.channelHandle.orEmpty()
-                                        webView?.apply {
-                                            stopLoading()
-                                            clearHistory()
-                                            clearCache(true)
-                                            clearFormData()
+                                    runCatching {
+                                        Innertube.accountInfo().onSuccess { info ->
+                                            AccountPreferences.accountName = info.name
+                                            AccountPreferences.accountEmail = info.email.orEmpty()
+                                            AccountPreferences.accountChannelHandle = info.channelHandle.orEmpty()
                                         }
-                                        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                                        intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                                        context.startActivity(intent)
-                                        Runtime.getRuntime().exit(0)
-                                    }.onFailure {
-                                        hasCompletedLogin = false
                                     }
+                                    webView?.apply {
+                                        stopLoading()
+                                        clearHistory()
+                                        clearCache(true)
+                                        clearFormData()
+                                    }
+                                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                                    intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                    context.startActivity(intent)
+                                    Runtime.getRuntime().exit(0)
                                 }
                             }
                         }
