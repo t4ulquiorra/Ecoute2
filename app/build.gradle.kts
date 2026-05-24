@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
@@ -51,9 +52,9 @@ android {
         }
     }
 
-    val keystoreProperties = java.util.Properties()
+    val keystoreProperties = Properties()
     val keystoreFile = rootProject.file("keystore.properties")
-    if (keystoreFile.exists()) keystoreFile.inputStream().use { keystoreProperties.load(it) }
+    if (keystoreFile.exists()) keystoreProperties.load(keystoreFile.reader())
     signingConfigs {
         create("release") {
             storeFile = keystoreProperties.getProperty("storeFile")?.let { rootProject.file(it) }
