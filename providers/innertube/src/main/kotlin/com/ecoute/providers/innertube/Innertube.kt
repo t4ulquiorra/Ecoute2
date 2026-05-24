@@ -4,6 +4,8 @@ import com.ecoute.providers.innertube.models.MusicNavigationButtonRenderer
 import com.ecoute.providers.innertube.models.NavigationEndpoint
 import com.ecoute.providers.innertube.models.Runs
 import com.ecoute.providers.innertube.models.Thumbnail
+import com.ecoute.providers.innertube.utils.parseCookieString
+import com.ecoute.providers.innertube.utils.sha1
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpResponseValidator
@@ -36,6 +38,15 @@ internal val json = Json {
 }
 
 object Innertube {
+    var cookie: String? = null
+        set(value) {
+            field = value
+            cookieMap = if (value == null) emptyMap() else parseCookieString(value)
+        }
+    private var cookieMap = emptyMap<String, String>()
+    var visitorData: String? = null
+    var dataSyncId: String? = null
+
     private val OriginInterceptor = createClientPlugin("OriginInterceptor") {
         client.sendPipeline.intercept(HttpSendPipeline.State) {
             context.headers {
@@ -83,6 +94,15 @@ object Innertube {
                 contentType(ContentType.Application.Json)
                 headers {
                     set("X-Goog-Api-Key", API_KEY)
+                    visitorData?.let { set("X-Goog-Visitor-Id", it) }
+                    cookie?.let { c ->
+                        set("cookie", c)
+                        if ("SAPISID" in cookieMap) {
+                            val currentTime = System.currentTimeMillis() / 1000
+                            val sapisidHash = sha1("$currentTime ${cookieMap["SAPISID"]} https://music.youtube.com")
+                            set("Authorization", "SAPISIDHASH ${currentTime}_${sapisidHash}")
+                        }
+                    }
                 }
                 parameters {
                     set("prettyPrint", "false")

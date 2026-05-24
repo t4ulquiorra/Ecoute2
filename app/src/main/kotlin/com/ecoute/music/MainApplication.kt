@@ -68,6 +68,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.work.Configuration
 import com.ecoute.music.preferences.AppearancePreferences
+import com.ecoute.music.preferences.AccountPreferences
 import com.ecoute.music.preferences.DataPreferences
 import com.ecoute.music.service.PlayerService
 import com.ecoute.music.service.ServiceNotifications
@@ -522,6 +523,9 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
                 .build()
         )
         Dependencies.init(this)
+        Innertube.cookie = AccountPreferences.innerTubeCookie.takeIf { it.isNotEmpty() }
+        Innertube.visitorData = AccountPreferences.visitorData.takeIf { it.isNotEmpty() }
+        Innertube.dataSyncId = AccountPreferences.dataSyncId.takeIf { it.isNotEmpty() }
 
         MonetCompat.debugLog = BuildConfig.DEBUG
         super.onCreate()

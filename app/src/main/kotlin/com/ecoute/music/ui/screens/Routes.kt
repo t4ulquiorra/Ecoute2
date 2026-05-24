@@ -48,6 +48,7 @@ val moodRoute = Route1<Mood>("moodRoute")
 val searchResultRoute = Route1<String>("searchResultRoute")
 val searchRoute = Route1<String>("searchRoute")
 val settingsRoute = Route0("settingsRoute")
+val loginRoute = Route0("loginRoute")
 
 @Composable
 fun RouteHandlerScope.GlobalRoutes() {
@@ -84,6 +85,10 @@ fun RouteHandlerScope.GlobalRoutes() {
             maxDepth = maxDepth,
             shouldDedup = shouldDedup
         )
+    }
+
+    loginRoute {
+        LoginScreen(onBack = pop)
     }
 
     settingsRoute {

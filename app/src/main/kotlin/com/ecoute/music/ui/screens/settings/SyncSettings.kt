@@ -43,6 +43,9 @@ import com.ecoute.music.ui.components.themed.DialogTextButton
 import com.ecoute.music.ui.components.themed.IconButton
 import com.ecoute.music.ui.components.themed.TextField
 import com.ecoute.music.ui.screens.Route
+import com.ecoute.music.ui.screens.loginRoute
+import com.ecoute.music.preferences.AccountPreferences
+import com.ecoute.compose.routing.LocalRouteHandler
 import com.ecoute.music.utils.center
 import com.ecoute.music.utils.get
 import com.ecoute.music.utils.semiBold
@@ -265,6 +268,35 @@ fun SyncSettings(
 
     SettingsCategoryScreen(title = stringResource(R.string.sync)) {
         SettingsDescription(text = stringResource(R.string.sync_description))
+        val router = LocalRouteHandler.current
+        val isLoggedIn = AccountPreferences.accountName.isNotEmpty()
+        SettingsGroup(title = "YouTube Music") {
+            if (isLoggedIn) {
+                SettingsEntry(
+                    title = AccountPreferences.accountName,
+                    text = AccountPreferences.accountEmail.ifEmpty { "Logged in" },
+                    onClick = {}
+                )
+                SettingsEntry(
+                    title = "Log out",
+                    text = "Remove YouTube Music account",
+                    onClick = {
+                        AccountPreferences.innerTubeCookie = ""
+                        AccountPreferences.visitorData = ""
+                        AccountPreferences.dataSyncId = ""
+                        AccountPreferences.accountName = ""
+                        AccountPreferences.accountEmail = ""
+                        AccountPreferences.accountChannelHandle = ""
+                    }
+                )
+            } else {
+                SettingsEntry(
+                    title = "Login",
+                    text = "Sign in with your Google account",
+                    onClick = { router?.run { with(router) { loginRoute() } } }
+                )
+            }
+        }
 
         SettingsGroup(title = stringResource(R.string.piped)) {
             SettingsEntry(
